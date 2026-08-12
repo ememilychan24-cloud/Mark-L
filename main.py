@@ -38,6 +38,7 @@ from actions.file_processor import file_processor
 from actions.flight_finder     import flight_finder
 from actions.open_app          import open_app
 from actions.weather_report    import weather_action
+from actions.longbridge_quote  import longbridge_quote_action
 from actions.send_message      import send_message
 from actions.reminder          import reminder
 from actions.computer_settings import computer_settings
@@ -157,6 +158,43 @@ TOOL_DECLARATIONS = [
                 "city": {"type": "STRING", "description": "City name"}
             },
             "required": ["city"]
+        }
+    },
+    {
+        "name": "longbridge_quote",
+        "description": (
+            "Get live stock quotes or read the user's Longbridge portfolio. "
+            "Use quote for questions such as 'TSLA price now', portfolio for an account overview, "
+            "positions for current holdings, and performance for profit or return over a period. "
+            "For 'this month', set period to this_month. This tool is read-only."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "query_type": {
+                    "type": "STRING",
+                    "enum": ["quote", "portfolio", "positions", "performance"],
+                    "description": "The read-only Longbridge query to run"
+                },
+                "symbol": {
+                    "type": "STRING",
+                    "description": "Stock symbol, such as TSLA or 700.HK; required for quote"
+                },
+                "period": {
+                    "type": "STRING",
+                    "enum": ["this_month"],
+                    "description": "Use this_month when the user asks for this month's performance"
+                },
+                "start_date": {
+                    "type": "STRING",
+                    "description": "Optional performance start date in YYYY-MM-DD format"
+                },
+                "end_date": {
+                    "type": "STRING",
+                    "description": "Optional performance end date in YYYY-MM-DD format"
+                }
+            },
+            "required": ["query_type"]
         }
     },
     {
@@ -418,8 +456,7 @@ TOOL_DECLARATIONS = [
             "JARVIS checks these topics once a day and alerts the user when there is a new development. "
             "Use 'add' when the user says 'monitor X', 'track X', 'follow X'. "
             "Use 'remove' when the user says 'stop monitoring X'. "
-            "Use 'list' when the user asks what is being monitored. "
-            "Do NOT add crypto, financial, or trading topics."
+            "Use 'list' when the user asks what is being monitored."
         ),
         "parameters": {
             "type": "OBJECT",
@@ -735,6 +772,13 @@ class JarvisLive:
             elif name == "weather_report":
                 r = await loop.run_in_executor(None, lambda: weather_action(parameters=args, player=self.ui))
                 result = r or "Weather delivered."
+
+            elif name == "longbridge_quote":
+                r = await loop.run_in_executor(
+                    None,
+                    lambda: longbridge_quote_action(parameters=args, player=self.ui),
+                )
+                result = r or "Longbridge query completed."
 
             elif name == "browser_control":
                 r = await loop.run_in_executor(None, lambda: browser_control(parameters=args, player=self.ui))
