@@ -256,7 +256,7 @@
 **幾時要：**客戶會用真實客人嘅相、身體、健康狀況或個人故事做內容。
 典型係 `health-adjacent`、`beauty-efficacy`、`minors` 呢幾個 modifier。
 
-呢類客戶嘅 `04-approved-claims.md` 要拆成兩條路 —— 搵埋處理係最常見嘅錯：
+呢類客戶嘅 `04-approved-claims.md` 要拆成兩條路 —— 撈埋處理係最常見嘅錯：
 
 ```markdown
 ### A · 品牌自身證據（低敏感）
