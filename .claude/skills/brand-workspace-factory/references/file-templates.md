@@ -345,6 +345,14 @@ B 層開一張名單統一補充。第二步唔可以跳；就算得二十份，
 └── 03_consent/         同意書掃描
 ```
 
+原始相片改名用 `scripts/case_rename.py`：`<case>_<stage>_<seq>_<date>.<ext>`，
+例如 `SS001_d01_01_2026-08-20.jpg`。配對 before/after = 同 case、同 seq、唔同 stage。
+**用編號唔用姓名** —— 姓名唔應該出現喺檔名。改名會寫低 `_rename-log.csv`
+（原檔名 → 新檔名），係還原同追溯嘅憑證。
+
+檔名做索引好過另開一份 CSV：CSV 要人手維護，改咗檔名或者搬咗位就錯咗而冇人知；
+檔名跟住檔案走。
+
 workspace 只放一份**追蹤表**（`data/consent/_PROCESSING.md`），記狀態唔記圖：
 案例編號 · 收到日期 · raw 位置 · 已裁切 ⬜ · 已對準 ⬜ · 同意 tier · 可用 ⬜。
 四格全部剔晒先算可用。

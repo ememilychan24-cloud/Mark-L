@@ -330,3 +330,7 @@ text-layer** —— 法規字眼唔可以有錯字，呢個唔係美觀問題。
 - `scripts/trend_pack.py` — 總公司 trend library：開 pack、驗證（缺欄位／過期／樣本缺失）、
   出索引、幫客戶揀 pack。
   `python scripts/trend_pack.py check --root <root>` · `... index --root <root>`
+- `scripts/case_rename.py` — 把客戶原始相片改名成自帶索引嘅檔名
+  （`SS001_d01_01_2026-08-20.jpg`）。預設只出計劃，`--apply` 先執行，`--undo` 還原。
+  **檔名做索引好過另開一份 CSV** —— CSV 要人手維護，一定會同實際檔案脫節；
+  檔名跟住檔案走，搬去邊都仲係啱，sort／glob／配對 before-after 全部直接做得到。
