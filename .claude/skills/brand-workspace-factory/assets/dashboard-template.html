@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="zh-Hant-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{BRAND}} · 工作台</title>
+<!--
+  展示層模板。生成時替換 {{BRAND}}、{{DATE}}、{{CONFIDENCE}}，
+  並把 STATE 換成由 workspace.json + queue/ 目錄實際狀態算出嚟嘅資料。
+
+  設計原則：呢個唔係報表。報表答「做咗幾多」，工作台面板答
+  「而家卡喺邊、等緊邊個、下一步係咩」。所以每一行都要有負責人同下一步 ——
+  冇呢兩欄，團隊仍然要周圍問進度，個面板就白做。
+-->
+<style>
+:root{
+  --bg:#F2F4F6; --card:#fff; --ink:#14243A; --ink-2:#4A6076; --ink-3:#7C8FA3;
+  --line:#D8E0E8; --line-2:#EAEEF2;
+  --wait:#B07A0C; --wait-bg:#FDF3DC;
+  --ok:#1B6B52; --ok-bg:#DDF1E8;
+  --block:#A33A2B; --block-bg:#FBE4E0;
+  --idle:#6B7C8C; --idle-bg:#EDF1F4;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0B1622; --card:#132234; --ink:#E6EDF4; --ink-2:#A8BCCE; --ink-3:#7A8EA1;
+  --line:#26384C; --line-2:#1B2A3C;
+  --wait:#E8B54A; --wait-bg:#33280C;
+  --ok:#5FC7A3; --ok-bg:#0F2E25;
+  --block:#F0876F; --block-bg:#37170F;
+  --idle:#8A9CAC; --idle-bg:#1B2A3C;
+}}
+:root[data-theme="dark"]{
+  --bg:#0B1622; --card:#132234; --ink:#E6EDF4; --ink-2:#A8BCCE; --ink-3:#7A8EA1;
+  --line:#26384C; --line-2:#1B2A3C;
+  --wait:#E8B54A; --wait-bg:#33280C;
+  --ok:#5FC7A3; --ok-bg:#0F2E25;
+  --block:#F0876F; --block-bg:#37170F;
+  --idle:#8A9CAC; --idle-bg:#1B2A3C;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.7 "Noto Sans TC",-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 20px 72px}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:baseline;
+  border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px}
+h1{font-size:26px;margin:0;letter-spacing:-.01em}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+  color:var(--ink-3);letter-spacing:.04em}
+h2{font-size:14px;margin:36px 0 12px;text-transform:uppercase;letter-spacing:.12em;
+  color:var(--ink-3);font-weight:700}
+.banner{background:var(--wait-bg);border:1px solid var(--wait);color:var(--wait);
+  border-radius:4px;padding:10px 14px;margin-top:18px;font-size:14px}
+.rail{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px}
+.st{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:12px 13px}
+.st .n{font-family:ui-monospace,monospace;font-size:10px;color:var(--ink-3);letter-spacing:.1em}
+.st .t{font-weight:700;font-size:14px;margin:3px 0 8px}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;
+  border:1px solid currentColor}
+.p-wait{color:var(--wait);background:var(--wait-bg)}
+.p-ok{color:var(--ok);background:var(--ok-bg)}
+.p-block{color:var(--block);background:var(--block-bg)}
+.p-idle{color:var(--idle);background:var(--idle-bg)}
+.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:5px}
+table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:600px}
+th{text-align:left;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:700;padding:11px 14px;border-bottom:1px solid var(--line)}
+td{padding:11px 14px;border-bottom:1px solid var(--line-2);vertical-align:top}
+tr:last-child td{border-bottom:none}
+td.who{color:var(--ink-2);white-space:nowrap}
+td.next{font-weight:700}
+.empty{padding:22px 14px;color:var(--ink-3);font-size:14px}
+footer{margin-top:44px;border-top:1px solid var(--line);padding-top:14px;
+  font-size:13px;color:var(--ink-3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>{{BRAND}}</h1>
+  <span class="mono">更新 {{DATE}} · 語料信心度 {{CONFIDENCE}} · 發布模式 待審</span>
+</header>
+
+<div class="banner" id="banner">第一個月只排到待審 —— 內容要人㩒掣先出街。</div>
+
+<h2>八站狀態</h2>
+<div class="rail" id="rail"></div>
+
+<h2>待審佇列</h2>
+<div class="tw"><table>
+  <thead><tr><th>內容</th><th>平台</th><th>等緊邊個</th><th>停咗幾耐</th><th>下一步</th></tr></thead>
+  <tbody id="queue"></tbody>
+</table></div>
+
+<h2>本週排程</h2>
+<div class="tw"><table>
+  <thead><tr><th>日期</th><th>平台</th><th>內容</th><th>狀態</th></tr></thead>
+  <tbody id="sched"></tbody>
+</table></div>
+
+<h2>最近決策</h2>
+<div class="tw"><table>
+  <thead><tr><th>日期</th><th>決定</th><th>原因</th><th>已補去邊層</th></tr></thead>
+  <tbody id="log"></tbody>
+</table></div>
+
+<footer>
+  空櫃桶：<span id="gaps">—</span><br>
+  產出唔似品牌嗰陣，唔好改嗰篇稿 —— 改 <code>brand/brain/02-voice-profile.md</code>。
+</footer>
+
+</div>
+
+<script>
+// 生成時把呢個物件換成真實資料（由 workspace.json 同 queue/ 目錄算出）。
+const STATE = {
+  stations: [
+    {n:"01", t:"來源庫",   status:"ok",    note:"34 條已入庫"},
+    {n:"02", t:"選題",     status:"ok",    note:"6 個角度待揀"},
+    {n:"03", t:"文案",     status:"wait",  note:"2 篇等審"},
+    {n:"04", t:"視覺",     status:"idle",  note:"等文案批准"},
+    {n:"05", t:"落地／名單", status:"idle", note:"未啟用"},
+    {n:"06", t:"社群",     status:"wait",  note:"5 條回覆待審"},
+    {n:"07", t:"排程",     status:"ok",    note:"本週已排 4 條"},
+    {n:"08", t:"覆盤",     status:"idle",  note:"週五"}
+  ],
+  queue: [],
+  schedule: [],
+  log: [],
+  gaps: ["04-approved-claims.md（未有已授權個案）", "07-review-log.md", "08-learning.md"]
+};
+
+const LABEL = {ok:"順行", wait:"等人審", block:"卡住", idle:"待上游"};
+
+const el = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pill = s => `<span class="pill p-${s}">${LABEL[s] || s}</span>`;
+
+el("rail").innerHTML = STATE.stations.map(s => `
+  <div class="st">
+    <div class="n">${esc(s.n)}</div>
+    <div class="t">${esc(s.t)}</div>
+    ${pill(s.status)}
+    <div class="mono" style="margin-top:7px">${esc(s.note)}</div>
+  </div>`).join("");
+
+function fill(id, rows, cols, emptyMsg) {
+  const tb = el(id);
+  if (!rows.length) {
+    tb.innerHTML = `<tr><td colspan="${cols.length}" class="empty">${emptyMsg}</td></tr>`;
+    return;
+  }
+  tb.innerHTML = rows.map(r => "<tr>" + cols.map(c =>
+    c.pill ? `<td>${pill(r[c.k])}</td>`
+           : `<td class="${c.cls || ''}">${esc(r[c.k] ?? "")}</td>`
+  ).join("") + "</tr>").join("");
+}
+
+fill("queue", STATE.queue,
+  [{k:"title"},{k:"platform"},{k:"owner",cls:"who"},{k:"waiting",cls:"who"},{k:"next",cls:"next"}],
+  "冇嘢等審。");
+fill("sched", STATE.schedule,
+  [{k:"date",cls:"who"},{k:"platform"},{k:"title"},{k:"status",pill:true}],
+  "本週未有排程。");
+fill("log", STATE.log,
+  [{k:"date",cls:"who"},{k:"decision"},{k:"why"},{k:"layer",cls:"next"}],
+  "未有決策記錄 —— 第一次 review 之後補返。");
+
+el("gaps").textContent = STATE.gaps.length ? STATE.gaps.join(" · ") : "冇";
+
+const stuck = STATE.stations.some(s => s.status === "block");
+if (stuck) {
+  const b = el("banner");
+  b.textContent = "有工作站卡住 —— 睇下面待審佇列嘅「下一步」。";
+  b.style.background = "var(--block-bg)";
+  b.style.borderColor = "var(--block)";
+  b.style.color = "var(--block)";
+}
+</script>
+</body>
+</html>
