@@ -159,6 +159,10 @@ style pack；客戶喺 dashboard 揀邊個 pack，視覺 agent 生圖就跟嗰�
 規格喺 `references/file-templates.md` 嘅〈同意登記〉。三條唔可以省：agent 唔可以寫入同意登記、
 正本唔放 workspace、要有使用索引（因為同意可以撤回，而撤回要做得到）。
 
+**客戶做咗幾年、舊個案得紙本同意**（好常見）→ 紙本係有效同意，但要按**原文授權範圍**
+分三層：範圍已涵蓋社交／廣告嘅照用；只寫「本店宣傳」或冇寫用途嘅唔可以出新平台；
+搵唔返紙本嘅當唔存在。唔好一刀切批准 —— 舊同意嘅問題通常唔係「有冇」，係「範圍」。
+
 同時生成 `brand/BIBLE.md`：一頁式憲法，包住定位、受眾、語氣三行總結、同紅線清單。紅線由 archetype ＋ modifier 決定（見 `references/archetypes.md`）。
 
 ### 步驟 5 — 🛑 人手閘門一：審 Brand Brain
