@@ -1,0 +1,5 @@
+
+# 工作台生成物（本機跑出嚟，唔入 repo）
+agency/
+__pycache__/
+*.pyc
