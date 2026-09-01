@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from datetime import date
@@ -56,14 +57,18 @@ def inject_redlines(cdir: Path, b: Brief) -> int:
     if not bible.is_file():
         return 0
     text = bible.read_text(encoding="utf-8")
-    placeholder = "- [ ] <由 archetype 生成>"
     lines = [f"- [ ] {r}" for r in b.redlines]
     if not lines:
         lines = ["- [ ] <呢個行業冇預設紅線 —— 開工前要同客戶逐條問返出嚟>"]
-    if placeholder in text:
-        text = text.replace(placeholder, "\n".join(lines), 1)
-    elif "## 紅線" in text:
-        return 0  # 已經填過，唔好重複塞
+
+    # 按**形狀**搵 placeholder（`- [ ] <…>`），唔按字面比對。
+    # 之前兩邊各自寫死同一句字串，改咗 scaffold 嗰句，呢邊就靜靜雞搵唔到，
+    # 結果 BIBLE 得返一行 placeholder、一條紅線都冇 —— 而且唔會報錯。
+    placeholder = re.compile(r"^- \[ \] <[^>]*>$", re.MULTILINE)
+    if placeholder.search(text):
+        text = placeholder.sub(lambda _: "\n".join(lines), text, count=1)
+    else:
+        return 0   # 已經填過，唔好重複塞
     bible.write_text(text, encoding="utf-8")
     return len(lines)
 

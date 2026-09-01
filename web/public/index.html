@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工作台狀態</title>
+<style>
+  :root{--bg:#faf9f7;--panel:#fff;--line:#e6e2db;--ink:#1f1e1c;--muted:#6f6a62;
+    --block:#b23b30;--warn:#a8700f;--ok:#3f7a4e;--setup:#4a6d86;--track:#eceae5;
+    --accent:#3f6b57;--accent-soft:#e6efe9}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#171614;--panel:#201f1c;--line:#332f2a;--ink:#efece6;--muted:#a09a90;
+    --block:#e2695c;--warn:#d9a13d;--ok:#69b07d;--setup:#7fa9c4;--track:#2b2924;
+    --accent:#74b096;--accent-soft:#22302a}}
+  :root[data-theme="dark"]{--bg:#171614;--panel:#201f1c;--line:#332f2a;--ink:#efece6;
+    --muted:#a09a90;--block:#e2695c;--warn:#d9a13d;--ok:#69b07d;--setup:#7fa9c4;
+    --track:#2b2924;--accent:#74b096;--accent-soft:#22302a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15.5px/1.65 -apple-system,BlinkMacSystemFont,"PingFang HK","Noto Sans HK",sans-serif}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 20px 70px}
+  header{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;
+    padding-bottom:18px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  h1{font-size:20px;margin:0}
+  .who{font-size:12.5px;color:var(--muted)}
+  .acts{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+  .btn{font:inherit;font-size:14px;font-weight:600;text-decoration:none;cursor:pointer;
+    border-radius:8px;padding:9px 15px;border:1.5px solid var(--line);
+    background:var(--panel);color:var(--ink)}
+  .btn:hover{border-color:var(--accent)}
+  .btn.go{background:var(--accent);border-color:var(--accent);color:#fff}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:18px 20px;margin-bottom:13px}
+  .chead{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-bottom:11px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+  .name{font-weight:600;font-size:17px}
+  .tag{font-size:11.5px;color:var(--muted);border:1px solid var(--line);
+    border-radius:20px;padding:2px 9px;white-space:nowrap}
+  .meta{font-size:12.5px;color:var(--muted);margin:9px 0}
+  .blockers{margin:11px 0 0;padding:0;list-style:none}
+  .blockers li{border-left:3px solid var(--block);padding:6px 0 6px 12px;
+    margin-bottom:8px;font-size:13.5px}
+  .blockers .what{font-weight:600}
+  .blockers .cons,.blockers .fix{display:block;color:var(--muted)}
+  .next{margin-top:12px;padding-top:11px;border-top:1px solid var(--line);font-size:14.5px}
+  .next span{color:var(--muted);font-size:12px;display:block}
+  .files{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+  .files summary{cursor:pointer;font-size:13.5px;color:var(--muted)}
+  .flist{margin:10px 0 0;padding:0;list-style:none;display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:5px}
+  .flist a{font-size:12.5px;text-decoration:none;color:var(--accent);
+    font-family:ui-monospace,Menlo,monospace;padding:3px 0;display:block}
+  .flist a:hover{text-decoration:underline}
+  .empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;
+    padding:44px 20px;text-align:center;color:var(--muted)}
+  dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);
+    color:var(--ink);max-width:min(820px,92vw);width:100%;padding:0}
+  dialog::backdrop{background:rgba(0,0,0,.45)}
+  .dhead{display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:14px 18px;border-bottom:1px solid var(--line)}
+  .dhead b{font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:600}
+  pre{margin:0;padding:18px;max-height:64vh;overflow:auto;white-space:pre-wrap;
+    word-break:break-word;font-family:ui-monospace,Menlo,monospace;font-size:13px;
+    line-height:1.75}
+  .code{background:var(--accent-soft);border-radius:9px;padding:14px 16px;margin-top:12px;
+    font-family:ui-monospace,Menlo,monospace;font-size:15px;word-break:break-all}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><h1>工作台狀態</h1><div class="who" id="who"></div></div>
+    <div class="acts" id="acts"></div>
+  </header>
+  <div id="clients"><p class="who">載入緊…</p></div>
+</div>
+
+<dialog id="viewer">
+  <div class="dhead"><b id="vpath"></b>
+    <button class="btn" onclick="document.getElementById('viewer').close()">閂</button></div>
+  <pre id="vbody"></pre>
+</dialog>
+
+<script>
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const HEALTH = {blocked:["var(--block)","阻塞"],attention:["var(--warn)","等人審"],
+  ready:["var(--ok)","運作中"],setup:["var(--setup)","待設置"]};
+let ME = {};
+
+async function load(){
+  const me = await (await fetch("/api/me")).json();
+  if (!me.role){ location.href = "/login.html"; return; }
+  ME = me;
+
+  document.getElementById("who").textContent =
+    me.role === "owner" ? "你係管理員 —— 見到所有客戶" : `客戶檢視 · ${me.slug}`;
+  document.getElementById("acts").innerHTML =
+    (me.role === "owner" ? `<a class="btn go" href="/setup.html">＋ 開新客</a>` : "") +
+    `<button class="btn" id="out">登出</button>`;
+  document.getElementById("out").onclick = async () => {
+    await fetch("/api/logout", {method:"POST"}); location.href = "/login.html";
+  };
+
+  const r = await fetch("/api/clients");
+  const d = await r.json();
+  const box = document.getElementById("clients");
+  if (!d.clients || !d.clients.length){
+    box.innerHTML = `<div class="empty">${me.role === "owner"
+      ? "仲未有客戶。撳右上角 <b>＋ 開新客</b> 開始。"
+      : "你個工作台仲未起好。搵返你嘅顧問。"}</div>`;
+    return;
+  }
+  box.innerHTML = d.clients.map(card).join("");
+  document.querySelectorAll("[data-files]").forEach(el =>
+    el.addEventListener("toggle", () => loadFiles(el.dataset.files), {once:true}));
+}
+
+function card(c){
+  const [colour, label] = HEALTH[c.health] || HEALTH.setup;
+  return `<div class="card">
+    <div class="chead">
+      <span class="dot" style="background:${colour}"></span>
+      <span class="name">${esc(c.brand)}</span>
+      <span class="tag">${esc(label)}</span>
+      <span class="tag">${esc(c.archetype)}</span>
+      ${(c.modifiers||[]).map(m => `<span class="tag">${esc(m)}</span>`).join("")}
+    </div>
+    <div class="meta">
+      ${(c.agents||[]).length} 個崗位 · ${(c.redlines||[]).length} 條紅線 ·
+      ${(c.platforms||[]).length} 個平台 · 視覺 <b>${esc(c.visual_confidence)}</b> ·
+      發布 <b>${esc(c.publish_mode)}</b> · ${c.files} 個檔案
+    </div>
+    ${(c.blockers||[]).length ? `<ul class="blockers">` + c.blockers.map(b => `
+      <li><span class="what">${esc(b.what)}</span>
+        <span class="cons">${esc(b.consequence)}</span>
+        <span class="fix">→ ${esc(b.fix)}</span></li>`).join("") + `</ul>` : ""}
+    <div class="next"><span>下一步</span>${esc(c.next_action)}</div>
+    <details class="files" data-files="${esc(c.slug)}">
+      <summary>睇工作台檔案（${c.files}）</summary>
+      <ul class="flist" id="f-${esc(c.slug)}"><li class="who">載入緊…</li></ul>
+    </details>
+  </div>`;
+}
+
+async function loadFiles(slug){
+  const ul = document.getElementById("f-" + slug);
+  const r = await fetch(`/api/clients/${encodeURIComponent(slug)}/files`);
+  if (!r.ok){ ul.innerHTML = `<li class="who">攞唔到</li>`; return; }
+  const d = await r.json();
+  ul.innerHTML = d.files.map(f =>
+    `<li><a href="#" data-p="${esc(f.path)}" data-s="${esc(slug)}">${esc(f.path)}</a></li>`).join("");
+  ul.querySelectorAll("a").forEach(a => a.onclick = async e => {
+    e.preventDefault();
+    const res = await fetch(
+      `/api/clients/${encodeURIComponent(a.dataset.s)}/file?path=${encodeURIComponent(a.dataset.p)}`);
+    document.getElementById("vpath").textContent = a.dataset.p;
+    document.getElementById("vbody").textContent = res.ok ? await res.text() : "攞唔到呢個檔案。";
+    document.getElementById("viewer").showModal();
+  });
+}
+
+load();
+</script>
+</body>
+</html>

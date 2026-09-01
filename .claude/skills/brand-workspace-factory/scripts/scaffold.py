@@ -107,32 +107,16 @@ def bible(name: str, archetype: str, modifiers: list[str]) -> str:
         "",
         "> 每一條都要可以機械式檢查。寫唔到檢查方法嘅，唔算紅線。",
         "",
-        "- [ ] <由 archetype 生成>",
+        "- [ ] <未填 —— 行業同合規紅線由 taxonomy.py 寫入。單獨跑 scaffold.py 唔會有紅線，因為 scaffold 唔知你揀咗咩合規修飾。>",
     ]
-    if "health-adjacent" in modifiers:
-        lines += [
-            "- [ ] 唔用「治療／根治／醫學證實／療效」呢類字眼",
-            "- [ ] 任何身體症狀內容一律加「持續或惡化請諮詢醫護人員」",
-            "- [ ] 唔提供劑量或療程建議",
-            "- [ ] 個案分享要有書面同意並隱去可識別資料",
-            "- [ ] 唔宣稱取代專業醫療意見",
-        ]
-    if "finance-adjacent" in modifiers:
-        lines += [
-            "- [ ] 唔保證回報，唔講「穩賺」「低風險高回報」",
-            "- [ ] 唔提供個人化投資建議",
-            "- [ ] 所有數字要標明出處同日期",
-        ]
-    if "minors" in modifiers:
-        lines += [
-            "- [ ] 唔直接向兒童落 CTA",
-            "- [ ] 唔用兒童真實影像（除非有監護人書面同意）",
-        ]
-    if "beauty-efficacy" in modifiers:
-        lines += [
-            "- [ ] 功效宣稱要有測試依據",
-            "- [ ] 前後對比圖要標明個人差異",
-        ]
+    # 合規紅線**唔喺呢度寫**。唯一來源係 taxonomy.py，由 pipeline.inject_redlines
+    # 寫入上面嗰個 placeholder。
+    #
+    # 之前呢度自己寫多份，結果每份 BIBLE 都有 15 條而唔係 8 條：5 條健康紅線
+    # 重複兩次，而「功效宣稱要有測試依據」仲有長短兩個唔同版本並存。
+    # 一份合規檔案入面同一條規矩有兩個講法，agent 就唔知邊個算數 ——
+    # 呢個正正係「兩個真相來源一定會飄」嘅實例。
+
     lines += [
         "",
         "## 證據來源",
@@ -271,6 +255,63 @@ def agents_md(role: str, brand: str, platforms: list[str]) -> str:
     ])
 
 
+def memory_md() -> str:
+    """決策與學習記錄。抽咗出嚟做函式，令 web 版可以由呢度匯出同一份範本 ——
+    唔好喺 JS 手抄多一份。"""
+    return "\n".join([
+        "# 決策與學習記錄",
+        "",
+        "> 每次 review 之後補一條。「點解改」比「改成點」有用。",
+        "",
+        "## 已批准（可以再用）",
+        "| 日期 | 咩嘢 | 點解 work | 連結 |",
+        "|---|---|---|---|",
+        "",
+        "## 已退回（唔好再犯）",
+        "| 日期 | 咩嘢 | 點解唔得 | 已補去邊層 |",
+        "|---|---|---|---|",
+        "",
+        "> 「已補去邊層」填唔到，即係今次只執咗份稿冇改到系統，下次會再犯。",
+        "",
+        "## 已知問題",
+        "",
+        "## 下次提醒",
+        "",
+    ])
+
+
+def checklist_md(brand: str) -> str:
+    """交付前驗收清單。同上：一個來源。"""
+    redlines = "- [ ] <由 BIBLE 紅線逐條複製過嚟>"
+    return "\n".join([
+        f"# {brand} 交付前驗收",
+        "",
+        "## 來源與證據",
+        "- [ ] 每個數據／個案 Claim 有來源（標題／平台／作者／日期／連結）",
+        "- [ ] 冇引用 04-approved-claims.md 以外嘅證據",
+        "- [ ] 冇把同行觀點當成品牌立場",
+        "",
+        "## 品牌",
+        "- [ ] 句長、開場類型、標點習慣對得上 02-voice-profile.md",
+        "- [ ] 稱呼讀者用返固定講法",
+        "- [ ] 冇用禁用詞",
+        "- [ ] 平台規格符合 06-platform-rules.md",
+        "",
+        "## 紅線",
+        redlines,
+        "",
+        "## 對外一致性",
+        "- [ ] 內容、落地頁、表單、訊息講緊同一件事",
+        "- [ ] CTA 清楚，下一步冇歧義",
+        "- [ ] 連結行得通",
+        "",
+        "## 交付完整性",
+        "- [ ] 文字／圖／caption／CTA／來源齊全",
+        "- [ ] 檔名同路徑符合規範",
+        "",
+    ])
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="生成 client workspace 目錄樹")
     p.add_argument("--root", required=True, help="agency 根目錄")
@@ -319,55 +360,9 @@ def main() -> int:
             body = f"# {num} · {title}\n\n<{what}>\n\n> 由步驟 3–4 填。留白等於冇資料，agent 會自己補 —— 所以寧願寫「未建立」。\n"
         written += w(cdir / "brand" / "brain" / fn, body, a.force)
 
-    written += w(cdir / "brand" / "MEMORY.md", "\n".join([
-        "# 決策與學習記錄",
-        "",
-        "> 每次 review 之後補一條。「點解改」比「改成點」有用。",
-        "",
-        "## 已批准（可以再用）",
-        "| 日期 | 咩嘢 | 點解 work | 連結 |",
-        "|---|---|---|---|",
-        "",
-        "## 已退回（唔好再犯）",
-        "| 日期 | 咩嘢 | 點解唔得 | 已補去邊層 |",
-        "|---|---|---|---|",
-        "",
-        "> 「已補去邊層」填唔到，即係今次只執咗份稿冇改到系統，下次會再犯。",
-        "",
-        "## 已知問題",
-        "",
-        "## 下次提醒",
-        "",
-    ]), a.force)
+    written += w(cdir / "brand" / "MEMORY.md", memory_md(), a.force)
 
-    redlines = "- [ ] <由 BIBLE 紅線逐條複製過嚟>"
-    written += w(cdir / "CHECKLIST.md", "\n".join([
-        f"# {brand} 交付前驗收",
-        "",
-        "## 來源與證據",
-        "- [ ] 每個數據／個案 Claim 有來源（標題／平台／作者／日期／連結）",
-        "- [ ] 冇引用 04-approved-claims.md 以外嘅證據",
-        "- [ ] 冇把同行觀點當成品牌立場",
-        "",
-        "## 品牌",
-        "- [ ] 句長、開場類型、標點習慣對得上 02-voice-profile.md",
-        "- [ ] 稱呼讀者用返固定講法",
-        "- [ ] 冇用禁用詞",
-        "- [ ] 平台規格符合 06-platform-rules.md",
-        "",
-        "## 紅線",
-        redlines,
-        "",
-        "## 對外一致性",
-        "- [ ] 內容、落地頁、表單、訊息講緊同一件事",
-        "- [ ] CTA 清楚，下一步冇歧義",
-        "- [ ] 連結行得通",
-        "",
-        "## 交付完整性",
-        "- [ ] 文字／圖／caption／CTA／來源齊全",
-        "- [ ] 檔名同路徑符合規範",
-        "",
-    ]), a.force)
+    written += w(cdir / "CHECKLIST.md", checklist_md(brand), a.force)
 
     for role in agents:
         written += w(cdir / "agents" / role / "AGENTS.md", agents_md(role, brand, plats), a.force)

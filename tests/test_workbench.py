@@ -96,6 +96,16 @@ def test_pipeline() -> None:
         check(len(meta["agents"]) <= 8, "員工唔超過 8 個")
         check(meta["source_sentence"].startswith("客戶做"), "原話有留低，日後查得返點解咁分")
 
+        # 紅線曾經寫咗兩次（scaffold 同 taxonomy 各有一份），而且兩份字眼唔同：
+        # 「功效宣稱要有測試依據」有長短兩個版本並存。一份合規檔案入面
+        # 同一條規矩有兩個講法，agent 就唔知邊個算數。
+        from collections import Counter
+        rl = [x for x in bible.splitlines() if x.startswith("- [ ]")]
+        check(len(rl) == len(b.redlines),
+              f"BIBLE 紅線數目 {len(rl)} 等於 brief 嘅 {len(b.redlines)}（唔會寫兩次）")
+        check(not [x for x, n in Counter(rl).items() if n > 1], "冇任何一條紅線重複")
+        check(not any(x.startswith("- [ ] <") for x in rl), "placeholder 已經真係被取代")
+
         report = (cdir / "run-report.md").read_text(encoding="utf-8")
         check("未爬過任何公開內容" in report, "報告有講明未做嘅嘢，唔會扮完成")
 
@@ -213,6 +223,22 @@ def test_wizard() -> None:
     check(bool(o["summary"]["redlines"]), "最後一頁會列晒紅線先俾你撳")
 
 
+def test_web_export_in_sync() -> None:
+    """web/src/generated.js 一定要同 Python 同步。
+
+    Cloudflare 版嘅行業表同範本係由 Python 匯出。改咗 taxonomy.py 但冇重新匯出，
+    網站就會顯示舊嘅行業同紅線 —— 而客戶睇到嘅係網站嗰邊，唔係 Python 嗰邊。
+    呢個 repo 已經因為「兩個真相來源」中過一次招（紅線寫咗兩次），唔好再中。
+    """
+    print("\nweb 匯出同步")
+    import subprocess
+    root = Path(__file__).resolve().parent.parent
+    r = subprocess.run([sys.executable, "scripts/build_web.py", "--check"],
+                       cwd=root, capture_output=True, text=True)
+    check(r.returncode == 0, "generated.js 同 Python 同步"
+          + ("" if r.returncode == 0 else "　→ 跑 python3 scripts/build_web.py"))
+
+
 def test_slug() -> None:
     print("\n資料夾命名")
 
@@ -255,7 +281,7 @@ def test_visual() -> None:
 
 def main() -> int:
     for fn in (test_classify, test_pipeline, test_state, test_autopublish_guard,
-               test_wizard, test_slug, test_visual):
+               test_wizard, test_slug, test_visual, test_web_export_in_sync):
         fn()
     print()
     if FAILED:
