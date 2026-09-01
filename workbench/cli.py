@@ -2,6 +2,7 @@
 """
 工作台 CLI。零外部依賴 —— 淨係要 Python 3.11+。
 
+  python -m workbench start       # 開工作台，自動彈開瀏覽器 ← 唔識 terminal 用呢個
   python -m workbench new "我個客賣產後紮肚服務，用開 IG 同小紅書，@mamis_sunshine"
   python -m workbench status
   python -m workbench serve
@@ -173,7 +174,16 @@ def cmd_industries(a) -> int:
 
 def cmd_serve(a) -> int:
     from .server import serve
-    return serve(Path(a.root), a.port, a.host)
+    return serve(Path(a.root), a.port, a.host, open_browser=False)
+
+
+def cmd_start(a) -> int:
+    """一句嘢開晒 —— 唔識用 terminal 嘅人淨係需要記住呢一個。"""
+    from .server import serve
+    root = Path(a.root)
+    if not (root / "clients").is_dir():
+        print("第一次用：仲未有客戶。開咗之後撳「＋ 開新客」就得。\n")
+    return serve(root, a.port, a.host, open_browser=True)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -213,6 +223,12 @@ def main(argv: list[str] | None = None) -> int:
     sv.add_argument("--port", type=int, default=8787)
     sv.add_argument("--host", default="127.0.0.1")
     sv.set_defaults(fn=cmd_serve)
+
+    stt = sub.add_parser("start", parents=[common],
+                         help="開工作台並自動彈開瀏覽器（唔識 terminal 就用呢個）")
+    stt.add_argument("--port", type=int, default=8787)
+    stt.add_argument("--host", default="127.0.0.1")
+    stt.set_defaults(fn=cmd_start)
 
     a = p.parse_args(argv)
     return a.fn(a)

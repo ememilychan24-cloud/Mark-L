@@ -5,7 +5,10 @@
 零外部依賴 —— 淨係要 Python 3.11+。冇 pip install，冇 API key 都行得（分類、生成、
 dashboard 全部本機跑）。接 API 係之後嘅事，見 [`docs/API-MODULES.md`](../docs/API-MODULES.md)。
 
+**唔識用 terminal 嘅人，睇 [`docs/開始使用.md`](../docs/開始使用.md)，只需要記一行指令。**
+
 ```bash
+python3 -m workbench start         # 開工作台＋自動彈瀏覽器，之後全部撳掣
 python3 -m workbench demo          # 起五個唔同行業嘅示範客戶
 python3 -m workbench status        # 睇每個客塞喺邊
 python3 -m workbench serve         # 開 dashboard（http://127.0.0.1:8787）
@@ -20,6 +23,10 @@ python3 -m workbench new "客戶做網店賣產後紮肚服務，用開 IG，想
 ```
 
 先睇判斷結果、唔寫檔案：加 `--dry-run`。
+
+或者完全唔打字 —— `start` 之後撳「＋ 開新客」，六步撳完就有。
+每一步嘅選項會跟住上一步變（揀咗行業，平台同工作就自動配好；
+揀咗「做圖」，視覺崗位就自動加）。
 
 ---
 
@@ -112,9 +119,11 @@ clients/<slug>/
 | | |
 |---|---|
 | `taxonomy.py` | 行業分類、合規修飾、員工編制推導 |
+| `wizard.py` | 六步設定精靈嘅步驟同選項（選項喺呢度算，唔喺瀏覽器算）|
+| `visual.py` | 把瀏覽器讀返嘅圖片特徵寫成 `brand-visual.md` |
 | `pipeline.py` | 一句話 → workspace（調用 skill 嘅 `scaffold.py`）|
 | `state.py` | 讀檔案系統 → 生產線狀態、阻塞、下一步 |
-| `server.py` | Dashboard（stdlib，冇依賴）|
+| `server.py` | Dashboard ＋ 精靈 API（stdlib，冇依賴）|
 | `models.py` | 每個崗位用邊個模型、effort、batch、快取 |
 | `seed.py` | 示範資料（**只用喺 demo**）|
 | `cli.py` | 指令 |

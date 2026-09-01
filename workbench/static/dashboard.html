@@ -62,6 +62,10 @@
   th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
   .expired{color:var(--block)}
   footer{margin-top:36px;font-size:12px;color:var(--muted);text-align:center}
+  .newbtn{display:inline-block;font-size:14px;font-weight:600;text-decoration:none;
+    background:var(--ok);color:#fff;border-radius:8px;padding:9px 16px;white-space:nowrap}
+  .newbtn:hover{filter:brightness(1.1)}
+  .newbtn:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
   .empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;
     padding:40px 20px;text-align:center;color:var(--muted)}
   code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
@@ -75,7 +79,10 @@
       <h1>工作台狀態</h1>
       <div class="root" id="root"></div>
     </div>
-    <div class="root" id="stamp"></div>
+    <div style="display:flex;gap:14px;align-items:center">
+      <div class="root" id="stamp"></div>
+      <a class="newbtn" href="/setup">＋ 開新客</a>
+    </div>
   </header>
   <div class="totals" id="totals"></div>
   <div id="clients"></div>
@@ -155,8 +162,7 @@ async function tick(){
     document.getElementById("totals").innerHTML = tiles(d.totals || {});
     document.getElementById("clients").innerHTML = (d.clients || []).length
       ? d.clients.map(card).join("")
-      : `<div class="empty">仲未有客戶。<br><br>跑 <code>python -m workbench demo</code> 起示範客戶，
-          或者 <code>python -m workbench new "…"</code> 開真客。</div>`;
+      : `<div class="empty">仲未有客戶。<br><br>撳右上角嘅 <b>＋ 開新客</b> 開始，<br>或者跑 <code>python3 -m workbench demo</code> 睇示範。</div>`;
     document.getElementById("packs").innerHTML = packs(d.trend_packs);
   }catch(e){
     document.getElementById("stamp").textContent = "讀唔到狀態：" + e.message;

@@ -19,7 +19,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from workbench.pipeline import onboard          # noqa: E402
 from workbench.seed import seed                  # noqa: E402
 from workbench.state import read_agency, read_client  # noqa: E402
-from workbench.taxonomy import classify          # noqa: E402
+from workbench.taxonomy import classify, slugify # noqa: E402
+from workbench.visual import _hue_of, _missing_hues, render as render_visual  # noqa: E402
+from workbench.wizard import (                    # noqa: E402
+    Draft, apply_archetype_defaults, brief_from_draft, derived, options, seed_from_sentence,
+)
 
 FAILED: list[str] = []
 
@@ -158,8 +162,100 @@ def test_autopublish_guard() -> None:
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_wizard() -> None:
+    print("\n設定精靈")
+
+    # 一個乜都唔識嘅人，開頁乜都唔打
+    d = seed_from_sentence("")
+    o = options("industry", d)
+    check(not o["can_advance"], "未揀行業就唔行得（唔會靜靜雞用預設）")
+    check(len(o["choices"]) == 13, "13 個行業全部撳得")
+    check(all(c["hint"] for c in o["choices"]), "每個行業都有一句解釋，唔係淨係一個名")
+
+    # 撳一下行業 → 平台同工作自動填好。呢個就係「唔使填嘢」嘅核心。
+    d = apply_archetype_defaults(Draft(archetype="service-booking"))
+    check(len(d.platforms) >= 3, "揀完行業，平台自動填好")
+    check(len(d.skills) >= 4, "揀完行業，工作自動填好")
+
+    # 加合規修飾 → 紅線跟住變多
+    before = len(derived(d)["redlines"])
+    d.modifiers = ["health-adjacent", "beauty-efficacy"]
+    after = len(derived(d)["redlines"])
+    check(after > before, f"加合規修飾，紅線由 {before} 變 {after} 條")
+
+    # 揀「做圖」→ 自動請視覺崗位，用戶唔使識咩叫 agent
+    d.skills = list(d.skills) + ["image-gen"]
+    roles = [a["id"] for a in derived(d)["agents"]]
+    check("visual" in roles, "揀咗做圖，就自動請視覺崗位")
+    check("qa" in roles, "QA 永遠喺度")
+    check(len(roles) <= 8, "崗位唔超過 8 個")
+
+    o = options("jobs", d)
+    locked = [c for c in o["choices"] if c["locked"]]
+    check(bool(locked) and all(c["why"] for c in locked), "撳唔郁嘅工作要講明點解")
+
+    # 用戶撳走嘅嘢，唔可以被預設偷偷加返
+    d2 = apply_archetype_defaults(Draft(archetype="service-booking", platforms=["ig"]))
+    check(d2.platforms == ["ig"], "用戶自己揀咗平台，預設唔會蓋返佢")
+
+    # 精靈唔會再估一次 —— 撳咗咩就係咩
+    b = brief_from_draft(d)
+    check(b.archetype.key == "service-booking", "精靈用返用戶撳嘅行業，唔會重新分類")
+    check(all("人手揀" in v or "確認" in v for v in b.evidence.values()),
+          "每項判斷都標明係人手揀，唔係推斷出嚟")
+    check(not any("行業分唔清" in x for x in b.ambiguous),
+          "人手揀完就冇行業歧義（歧義只屬於猜測，唔屬於選擇）")
+    check(any("未交過參考圖" in x for x in b.ambiguous),
+          "但真實缺口照樣要講：未交圖就係未交圖")
+
+    o = options("review", d)
+    check(o["can_advance"], "揀齊嘢就開得工")
+    check(bool(o["summary"]["redlines"]), "最後一頁會列晒紅線先俾你撳")
+
+
+def test_slug() -> None:
+    print("\n資料夾命名")
+
+    # 之前淨係留 a-z0-9，於是三個唔同嘅中文名全部變咗 `client`，
+    # 第二個客會靜靜雞寫入第一個客個資料夾 —— 冇錯誤訊息，冇人發現
+    names = ["陳記茶餐廳", "小紅點設計", "日日鮮"]
+    slugs = [slugify(n) for n in names]
+    check(len(set(slugs)) == 3, f"三個中文名出到三個唔同資料夾（{slugs}）")
+    check("client" not in slugs, "中文名唔會全部塌落同一個預設值")
+    check(slugify("美麗人生 Salon") == "美麗人生-salon", "中英混合保得住兩邊")
+    check(slugify("") == "client" and slugify("!!!") == "client", "真係冇名先用預設")
+    check("/" not in slugify("a/../b") and ".." not in slugify("a/../b"),
+          "路徑符號會被洗走")
+
+
+def test_visual() -> None:
+    print("\n圖片分析")
+
+    # 之前用 R/G/B 大小比較，琥珀色被判做紅色，於是「從來冇出現」欄
+    # 會叫生圖模型避開品牌自己嘅強調色 —— 冇人 review 得到嘅錯
+    check(_hue_of("#E8A530") == "黃／橙", "琥珀色分類做黃／橙，唔係紅")
+    check(_hue_of("#5F7043") == "綠", "橄欖綠分類做綠")
+    check(_hue_of("#FCFAF3") is None, "米白色算中性，唔佔任何色系")
+    check(_hue_of("#000000") is None, "純黑算中性")
+
+    pal = ["#FCFAF3", "#5F7043", "#E8A530", "#424330"]
+    missing = _missing_hues(pal)
+    check("黃／橙" not in missing, "品牌自己有嘅色，唔會被列入禁用")
+    check("藍／紫" in missing, "真係冇出現過嘅色系，有列出嚟")
+
+    md = render_visual({"n": 26, "light": .71, "sat": .19, "portrait": .83, "edge": .07,
+                        "palette": [{"hex": h, "share": .2} for h in pal]})
+    check("信心度：**高**" in md, "26 張圖 = 高信心度")
+    check("從來冇出現" in md, "有寫「從來冇出現」欄")
+    check("要人手填" in md, "機器讀唔到嘅嘢，明明白白留白俾人填")
+
+    md0 = render_visual({"n": 3, "palette": [{"hex": "#5F7043", "share": 1}]})
+    check("信心度：**低**" in md0, "得 3 張圖唔會扮有信心")
+
+
 def main() -> int:
-    for fn in (test_classify, test_pipeline, test_state, test_autopublish_guard):
+    for fn in (test_classify, test_pipeline, test_state, test_autopublish_guard,
+               test_wizard, test_slug, test_visual):
         fn()
     print()
     if FAILED:

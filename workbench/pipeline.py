@@ -162,8 +162,14 @@ def write_run_report(cdir: Path, b: Brief, scaffold_out: str) -> None:
     (cdir / "run-report.md").write_text("\n".join(r), encoding="utf-8")
 
 
-def onboard(root: Path, sentence: str, slug: str | None = None, force: bool = False) -> tuple[Path, Brief]:
-    b = classify(sentence)
+def onboard_brief(root: Path, b: Brief, slug: str | None = None,
+                  force: bool = False) -> tuple[Path, Brief]:
+    """由一份**已經定咗**嘅 Brief 生成工作台。
+
+    設定精靈行呢條路：用戶撳出嚟嘅選擇就係最終答案，唔應該再拎去分類器估一次
+    （估出嚟同佢撳嘅唔同，就會出現「我明明揀咗 A，點解出咗 B」）。
+    `onboard()` 先至係由一句話估。兩條路之後嘅步驟完全一樣。
+    """
     slug = slug or slugify(b.brand_name or b.archetype.key)
     root = Path(root).expanduser().resolve()
     out = run_scaffold(root, slug, b, force=force)
@@ -179,3 +185,9 @@ def onboard(root: Path, sentence: str, slug: str | None = None, force: bool = Fa
     meta["ambiguous"] = b.ambiguous
     mf.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return cdir, b
+
+
+def onboard(root: Path, sentence: str, slug: str | None = None,
+            force: bool = False) -> tuple[Path, Brief]:
+    """由一句話生成工作台（CLI 走呢條）。"""
+    return onboard_brief(root, classify(sentence), slug=slug, force=force)
