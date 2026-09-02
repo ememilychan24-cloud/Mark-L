@@ -8,6 +8,10 @@
   python -m workbench serve
   python -m workbench doctor
   python -m workbench demo        # 起五個唔同行業嘅示範客戶
+
+要 API 憑證先行得（見 docs/API-MODULES.md）：
+  python -m workbench angles <客> "今週主題"
+  python -m workbench draft  <客> "今週主題" "人揀咗嘅角度"
 """
 
 from __future__ import annotations
@@ -172,6 +176,68 @@ def cmd_industries(a) -> int:
     return 0
 
 
+def _client_dir(root: Path, slug: str) -> Path | None:
+    d = Path(root) / "clients" / slug
+    return d if (d / "workspace.json").is_file() else None
+
+
+def cmd_angles(a) -> int:
+    """第 1 步：出候選角度，停低等人揀。"""
+    from .generate import NoCredentials, angles, write
+    cdir = _client_dir(Path(a.root), a.slug)
+    if not cdir:
+        print(f"✗ 搵唔到客戶「{a.slug}」。跑 `status` 睇有邊啲。", file=sys.stderr)
+        return 2
+    try:
+        run = angles(cdir, a.topic)
+    except NoCredentials as e:
+        print(f"\n{e}\n", file=sys.stderr)
+        return 3
+    for f in write(cdir, run):
+        print(f"  ✓ {f}")
+    _usage(run)
+    for n in run.notes:
+        print(f"\n{n}")
+    return 0
+
+
+def cmd_draft(a) -> int:
+    """第 2、3 步：寫稿 → 兩層 QA。"""
+    from .generate import NoCredentials, draft, write
+    cdir = _client_dir(Path(a.root), a.slug)
+    if not cdir:
+        print(f"✗ 搵唔到客戶「{a.slug}」。", file=sys.stderr)
+        return 2
+    try:
+        run = draft(cdir, a.topic, a.angle)
+    except NoCredentials as e:
+        print(f"\n{e}\n", file=sys.stderr)
+        return 3
+    for f in write(cdir, run):
+        print(f"  ✓ {f}")
+    _usage(run)
+    mark = "✓" if run.verdict == "pass" else "✗"
+    print(f"\n{mark} QA 判定：{run.verdict}")
+    for n in run.notes:
+        print(f"  {n}")
+    return 0 if run.verdict == "pass" else 1
+
+
+def _usage(run) -> None:
+    """把實際用量印出嚟。冇呢個你估唔到成本，亦都唔知快取有冇中。"""
+    from .models import TIER
+    t = run.totals()
+    print(f"\n  用量  {t['calls']} 次呼叫 · 檔次 {TIER}")
+    for c in run.calls:
+        hit = f"快取命中 {c.cache_read}" if c.cache_hit else (
+            f"寫入快取 {c.cache_write}" if c.cache_write else "冇快取")
+        print(f"        {c.job:<14} {c.model:<18} "
+              f"in {c.input_tokens:>6} out {c.output_tokens:>5}  {hit}")
+    if t["cache_read"] == 0 and t["cache_write"] == 0:
+        print("        ⚠️ 完全冇快取。重複跑幾次都係咁，就係前綴唔穩定 —— "
+              "見 workbench/brain.py 開頭。")
+
+
 def cmd_serve(a) -> int:
     from .server import serve
     return serve(Path(a.root), a.port, a.host, open_browser=False)
@@ -218,6 +284,19 @@ def main(argv: list[str] | None = None) -> int:
 
     i = sub.add_parser("industries", parents=[common], help="列出支援行業同各自嘅核心問題")
     i.set_defaults(fn=cmd_industries)
+
+    ag = sub.add_parser("angles", parents=[common],
+                        help="第 1 步：出候選角度（要 API 憑證）")
+    ag.add_argument("slug")
+    ag.add_argument("topic")
+    ag.set_defaults(fn=cmd_angles)
+
+    dr = sub.add_parser("draft", parents=[common],
+                        help="第 2、3 步：寫稿＋兩層 QA（要 API 憑證）")
+    dr.add_argument("slug")
+    dr.add_argument("topic")
+    dr.add_argument("angle", help="人揀咗嘅角度")
+    dr.set_defaults(fn=cmd_draft)
 
     sv = sub.add_parser("serve", parents=[common], help="開 dashboard（瀏覽器睇）")
     sv.add_argument("--port", type=int, default=8787)

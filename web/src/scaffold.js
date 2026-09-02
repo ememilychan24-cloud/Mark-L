@@ -6,10 +6,12 @@ import { derived } from "./wizard.js";
 
 const T = WB.tpl;
 
-function fill(tpl, brand, platforms) {
+function fill(tpl, brand, platforms, today = "") {
   return tpl
     .replaceAll("{{BRAND}}", brand)
-    .replaceAll("{{PLATFORMS}}", platforms.join("、") || "（未指定）");
+    .replaceAll("{{PLATFORMS}}", platforms.join("、") || "（未指定）")
+    // {{DATE}} 係建立嗰刻嘅日期，唔係建置日期 —— 見 scripts/build_web.py
+    .replaceAll("{{DATE}}", today);
 }
 
 // 同 pipeline.inject_redlines 一樣：按**形狀**搵 placeholder，唔按字面。
@@ -24,7 +26,7 @@ export function buildTree(d) {
   const files = {};
 
   // ── 品牌憲法 ──
-  let bible = fill(T.bible, brand, d.platforms)
+  let bible = fill(T.bible, brand, d.platforms, today)
     .replaceAll("{{ARCHETYPE}}", d.archetype);
   const rl = dv.redlines.length
     ? dv.redlines.map(r => `- [ ] ${r}`).join("\n")
@@ -41,11 +43,11 @@ export function buildTree(d) {
   }
 
   files["brand/MEMORY.md"] = T.memory;
-  files["CHECKLIST.md"] = fill(T.checklist, brand, d.platforms);
+  files["CHECKLIST.md"] = fill(T.checklist, brand, d.platforms, today);
 
   // ── 每個崗位一份工作說明 ──
   for (const role of agents) {
-    if (T.agents[role]) files[`agents/${role}/AGENTS.md`] = fill(T.agents[role], brand, d.platforms);
+    if (T.agents[role]) files[`agents/${role}/AGENTS.md`] = fill(T.agents[role], brand, d.platforms, today);
   }
 
   // ── 佇列（空目錄用 .gitkeep 佔位）──

@@ -13,6 +13,10 @@ python3 -m workbench demo          # 起五個唔同行業嘅示範客戶
 python3 -m workbench status        # 睇每個客塞喺邊
 python3 -m workbench serve         # 開 dashboard（http://127.0.0.1:8787）
 python3 -m workbench doctor        # 檢查有冇「睇落完整但唔可以出街」
+
+# 要 API 憑證（見 docs/接API.md）
+python3 -m workbench angles <客> "今週主題"              # 出角度，停低等人揀
+python3 -m workbench draft  <客> "今週主題" "揀咗嘅角度"   # 寫稿＋兩層 QA
 python3 -m workbench industries    # 列出支援行業同各自嘅核心問題
 ```
 
@@ -119,6 +123,9 @@ clients/<slug>/
 | | |
 |---|---|
 | `taxonomy.py` | 行業分類、合規修飾、員工編制推導 |
+| `brain.py` | 把品牌知識庫砌成 byte 穩定嘅快取前綴 |
+| `guard.py` | 機械式紅線檢查（唔靠模型自覺）|
+| `generate.py` | 真正叫 Claude：選題 → 寫稿 → 兩層 QA |
 | `wizard.py` | 六步設定精靈嘅步驟同選項（選項喺呢度算，唔喺瀏覽器算）|
 | `visual.py` | 把瀏覽器讀返嘅圖片特徵寫成 `brand-visual.md` |
 | `pipeline.py` | 一句話 → workspace（調用 skill 嘅 `scaffold.py`）|
@@ -139,4 +146,11 @@ clients/<slug>/
 python3 -m tests.test_workbench
 ```
 
+```bash
+python3 -m tests.test_generate     # 生成層（用假 client，唔會 call 真 API）
+```
+
 測嘅係判斷，唔係格式：分錯行業、漏咗紅線、假信心度 —— 呢三樣會令客戶出事。
+
+生成層嗰套特別測：快取前綴穩唔穩定、主題有冇錯放喺 system（放咗就每次 cache miss）、
+兩層 QA 係咪真係兩層（模型話 pass 但機械層攔咗，唔算過）。

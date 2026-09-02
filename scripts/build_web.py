@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -38,6 +39,13 @@ OUT = ROOT / "web" / "src" / "generated.js"
 
 BRAND = "{{BRAND}}"
 PLAT = "{{PLATFORMS}}"
+DATE = "{{DATE}}"
+
+# scaffold.bible() 會 stamp date.today()。如果照原樣匯出，就會把**建置當日**
+# 燒死喺範本入面：(a) 同步檢查每日都失敗，就算乜都冇改 —— 而一個日日報錯嘅
+# 檢查，兩星期內就會被人關咗；(b) 網頁版生成嘅 BIBLE 會寫住建置日期，
+# 唔係嗰個客真正開嘅日期。所以換成 sentinel，由 JS 喺建立嗰刻填。
+_TODAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 def _scaffold():
@@ -83,7 +91,7 @@ def build() -> dict:
             # bible() 唔再自己寫合規紅線（見 scaffold.py 入面嗰段註解），
             # 所以呢個骨架對所有 archetype 都一樣，紅線由 JS 照 pipeline
             # 嗰個做法注入 `- [ ] <…>` 嗰行。
-            "bible": sc.bible(BRAND, "{{ARCHETYPE}}", []),
+            "bible": _TODAY.sub(DATE, sc.bible(BRAND, "{{ARCHETYPE}}", []), count=1),
             "agents": {r: sc.agents_md(r, BRAND, [PLAT]) for r in sc.AGENT_LABELS},
             "brain": [
                 {"file": fn, "num": fn.split("-")[0], "title": title,
