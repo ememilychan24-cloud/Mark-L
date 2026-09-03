@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工作台狀態</title>
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#fff; --line:#e6e2db; --ink:#1f1e1c; --muted:#6f6a62;
+    --block:#b23b30; --warn:#a8700f; --ok:#3f7a4e; --setup:#4a6d86;
+    --track:#eceae5;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#171614; --panel:#201f1c; --line:#332f2a; --ink:#efece6; --muted:#a09a90;
+      --block:#e2695c; --warn:#d9a13d; --ok:#69b07d; --setup:#7fa9c4; --track:#2b2924;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171614; --panel:#201f1c; --line:#332f2a; --ink:#efece6; --muted:#a09a90;
+    --block:#e2695c; --warn:#d9a13d; --ok:#69b07d; --setup:#7fa9c4; --track:#2b2924;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang HK","Noto Sans HK","Microsoft JhengHei",sans-serif;}
+  .wrap{max-width:1080px;margin:0 auto;padding:32px 20px 64px}
+  header{display:flex;flex-wrap:wrap;gap:16px;align-items:baseline;justify-content:space-between;
+    padding-bottom:20px;border-bottom:1px solid var(--line);margin-bottom:28px}
+  h1{font-size:20px;margin:0;letter-spacing:.02em}
+  .root{font-size:12px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:32px}
+  .tile{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .tile b{display:block;font-size:26px;font-weight:600;letter-spacing:-.01em;line-height:1.2}
+  .tile span{font-size:12px;color:var(--muted)}
+  .tile.alert b{color:var(--block)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:18px 20px;margin-bottom:14px}
+  .chead{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;margin-bottom:14px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;align-self:center}
+  .name{font-weight:600;font-size:16px}
+  .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);
+    border-radius:20px;padding:2px 9px;white-space:nowrap}
+  .flow{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+  .step{flex:1 1 92px;min-width:92px;background:var(--track);border-radius:7px;padding:8px 10px}
+  .step.on{background:transparent;border:1px solid var(--line)}
+  .step em{display:block;font-style:normal;font-size:11px;color:var(--muted);margin-bottom:2px}
+  .step b{font-size:17px;font-weight:600}
+  .step.human b{color:var(--warn)}
+  .meta{font-size:12px;color:var(--muted);margin:10px 0}
+  .blockers{margin:12px 0 0;padding:0;list-style:none}
+  .blockers li{border-left:3px solid var(--warn);padding:6px 0 6px 12px;margin-bottom:8px;font-size:13px}
+  .blockers li.block{border-left-color:var(--block)}
+  .blockers .what{font-weight:600}
+  .blockers .cons{color:var(--muted);display:block}
+  .blockers .fix{display:block;margin-top:3px}
+  .next{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);font-size:14px}
+  .next span{color:var(--muted);font-size:12px;display:block}
+  .packs{margin-top:32px}
+  .packs h2{font-size:14px;margin:0 0 10px;color:var(--muted);font-weight:600}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+  th{color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+  .expired{color:var(--block)}
+  footer{margin-top:36px;font-size:12px;color:var(--muted);text-align:center}
+  .newbtn{display:inline-block;font-size:14px;font-weight:600;text-decoration:none;
+    background:var(--ok);color:#fff;border-radius:8px;padding:9px 16px;white-space:nowrap}
+  .newbtn:hover{filter:brightness(1.1)}
+  .newbtn:focus-visible{outline:3px solid var(--ok);outline-offset:2px}
+  .empty{background:var(--panel);border:1px dashed var(--line);border-radius:12px;
+    padding:40px 20px;text-align:center;color:var(--muted)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;
+    background:var(--track);padding:2px 6px;border-radius:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>工作台狀態</h1>
+      <div class="root" id="root"></div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center">
+      <div class="root" id="stamp"></div>
+      <a class="newbtn" href="/setup">＋ 開新客</a>
+    </div>
+  </header>
+  <div class="totals" id="totals"></div>
+  <div id="clients"></div>
+  <div class="packs" id="packs"></div>
+  <footer>每 5 秒重新讀一次檔案系統。畫面同硬碟一致。</footer>
+</div>
+
+<script>
+const STAGES = [
+  ["00-briefs","簡報","ai"],["01-insights","角度","human"],["02-drafts","草稿","ai"],
+  ["03-approved","已過質","human"],["04-assets","素材","human"],["05-scheduled","已排程","done"]
+];
+const HEALTH = {blocked:["var(--block)","阻塞"],attention:["var(--warn)","等人審"],
+  ready:["var(--ok)","運作中"],setup:["var(--setup)","待設置"],unknown:["var(--muted)","未知"]};
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function tiles(t){
+  return [
+    ["客戶", t.clients ?? 0, false],
+    ["等緊人審", t.waiting_human ?? 0, false],
+    ["阻塞", t.blocked ?? 0, (t.blocked ?? 0) > 0],
+    ["已排程", t.scheduled ?? 0, false]
+  ].map(([l,v,a]) => `<div class="tile${a?" alert":""}"><b>${v}</b><span>${l}</span></div>`).join("");
+}
+
+function card(c){
+  const [colour, label] = HEALTH[c.health] || HEALTH.unknown;
+  const flow = STAGES.map(([k,name,owner]) => {
+    const n = c.counts?.[k] ?? 0;
+    const cls = "step" + (n ? " on" : "") + (n && owner === "human" ? " human" : "");
+    return `<div class="${cls}"><em>${name}</em><b>${n}</b></div>`;
+  }).join("");
+  const blockers = (c.blockers || []).map(b => `
+    <li class="${esc(b.severity)}">
+      <span class="what">${esc(b.what)}<span class="tag" style="margin-left:6px">${b.owner === "client" ? "客戶" : "我哋"}</span></span>
+      <span class="cons">${esc(b.consequence)}</span>
+      <span class="fix">→ ${esc(b.fix)}</span>
+    </li>`).join("");
+  const replies = c.counts?.["06-replies"] ?? 0;
+  return `<div class="card">
+    <div class="chead">
+      <span class="dot" style="background:${colour}"></span>
+      <span class="name">${esc(c.brand)}</span>
+      <span class="tag">${esc(label)}</span>
+      <span class="tag">${esc(c.archetype)}</span>
+      ${(c.modifiers||[]).map(m => `<span class="tag">${esc(m)}</span>`).join("")}
+      ${(c.platforms||[]).length ? `<span class="tag">${c.platforms.map(esc).join(" · ")}</span>` : ""}
+    </div>
+    <div class="flow">${flow}</div>
+    <div class="meta">
+      語氣信心度 <b>${esc(c.voice_confidence)}</b> · 視覺 <b>${esc(c.visual_confidence)}</b>
+      · 發布模式 <b>${esc(c.publish_mode)}</b> · ${(c.agents||[]).length} 個崗位
+      ${replies ? ` · 待回覆 <b>${replies}</b>` : ""}
+    </div>
+    ${blockers ? `<ul class="blockers">${blockers}</ul>` : ""}
+    <div class="next"><span>下一步</span>${esc(c.next_action)}</div>
+  </div>`;
+}
+
+function packs(list){
+  if (!list || !list.length) return "";
+  const rows = list.map(p => `<tr>
+      <td><code>${esc(p.id)}</code></td><td>${esc(p.label)}</td>
+      <td>${p.samples}</td>
+      <td class="${p.expired ? "expired" : ""}">${esc(p.retire_after || "—")}${p.expired ? " · 已過期" : ""}</td>
+    </tr>`).join("");
+  return `<h2>趨勢圖庫（總公司）</h2><table>
+    <tr><th>ID</th><th>名稱</th><th>樣本</th><th>到期</th></tr>${rows}</table>`;
+}
+
+async function tick(){
+  try{
+    const r = await fetch("/api/state", {cache:"no-store"});
+    const d = await r.json();
+    document.getElementById("root").textContent = d.root || "";
+    document.getElementById("stamp").textContent = "更新於 " + (d.generated || "").replace("T"," ");
+    document.getElementById("totals").innerHTML = tiles(d.totals || {});
+    document.getElementById("clients").innerHTML = (d.clients || []).length
+      ? d.clients.map(card).join("")
+      : `<div class="empty">仲未有客戶。<br><br>撳右上角嘅 <b>＋ 開新客</b> 開始，<br>或者跑 <code>python3 -m workbench demo</code> 睇示範。</div>`;
+    document.getElementById("packs").innerHTML = packs(d.trend_packs);
+  }catch(e){
+    document.getElementById("stamp").textContent = "讀唔到狀態：" + e.message;
+  }
+}
+tick();
+setInterval(tick, 5000);
+</script>
+</body>
+</html>

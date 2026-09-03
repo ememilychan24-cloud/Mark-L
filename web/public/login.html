@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工作台 · 入場</title>
+<style>
+  :root{--bg:#faf9f7;--panel:#fff;--line:#e6e2db;--ink:#1f1e1c;--muted:#6f6a62;
+    --accent:#3f6b57;--stop:#b23b30}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+    --bg:#171614;--panel:#201f1c;--line:#332f2a;--ink:#efece6;--muted:#a09a90;
+    --accent:#74b096;--stop:#e2695c}}
+  :root[data-theme="dark"]{--bg:#171614;--panel:#201f1c;--line:#332f2a;--ink:#efece6;
+    --muted:#a09a90;--accent:#74b096;--stop:#e2695c}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);
+    color:var(--ink);padding:24px;
+    font:17px/1.7 -apple-system,BlinkMacSystemFont,"PingFang HK","Noto Sans HK",sans-serif}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:34px 32px;max-width:420px;width:100%}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:-.01em}
+  p.sub{color:var(--muted);font-size:15px;margin:0 0 24px}
+  label{display:block;font-size:14px;color:var(--muted);margin-bottom:7px}
+  input{width:100%;font:inherit;font-size:17px;padding:13px 15px;border-radius:10px;
+    border:1.5px solid var(--line);background:var(--bg);color:var(--ink);
+    letter-spacing:.04em}
+  input:focus{outline:none;border-color:var(--accent)}
+  button{width:100%;margin-top:14px;font:inherit;font-size:17px;font-weight:600;
+    padding:14px;border-radius:10px;border:0;background:var(--accent);color:#fff;
+    cursor:pointer}
+  button:hover{filter:brightness(1.08)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .err{color:var(--stop);font-size:14.5px;margin-top:14px;min-height:1.4em}
+  .note{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);
+    font-size:13.5px;color:var(--muted);line-height:1.65}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>工作台</h1>
+  <p class="sub">輸入你收到嘅通行碼。</p>
+  <label for="code">通行碼</label>
+  <input id="code" type="password" autocomplete="one-time-code" autofocus
+         placeholder="貼落嚟就得">
+  <button id="go" type="button">入去 →</button>
+  <div class="err" id="err"></div>
+  <div class="note">
+    冇通行碼？搵開你個工作台嘅人攞。每個客戶一個碼，只睇到自己嗰份嘢。
+  </div>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+async function login(){
+  const code = $("code").value.trim();
+  if (!code) return;
+  $("go").disabled = true; $("err").textContent = "";
+  try{
+    const r = await fetch("/api/login", {method:"POST",
+      headers:{"Content-Type":"application/json"}, body: JSON.stringify({code})});
+    const d = await r.json();
+    if (!r.ok){ $("err").textContent = d.error || "入唔到"; $("go").disabled = false; return; }
+    location.href = "/";
+  }catch(e){
+    $("err").textContent = "連唔到伺服器，試多次。";
+    $("go").disabled = false;
+  }
+}
+$("go").onclick = login;
+$("code").onkeydown = e => { if (e.key === "Enter") login(); };
+</script>
+</body>
+</html>

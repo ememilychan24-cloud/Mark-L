@@ -1,0 +1,21 @@
+name = "workbench"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# 靜態頁面（登入、dashboard、精靈）。/api/* 由 Worker 處理，其餘交返俾 assets。
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "workbench"
+database_id = "貼返 wrangler d1 create 印出嚟嗰個 id"
+
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "workbench-files"
+
+# Secrets（唔好寫喺呢度，用 wrangler secret put）：
+#   OWNER_KEY       你自己登入嘅通行碼
+#   SESSION_SECRET  簽 cookie 用，隨機長字串

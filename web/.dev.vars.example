@@ -1,0 +1,3 @@
+# 本機試跑用。真部署用 `wrangler secret put`，唔好把真值寫入 git。
+OWNER_KEY=test-owner-key
+SESSION_SECRET=local-dev-only-not-a-real-secret-0123456789

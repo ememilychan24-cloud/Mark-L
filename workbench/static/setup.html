@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="zh-HK">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>開一個新客</title>
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#fff; --line:#e6e2db; --ink:#1f1e1c; --muted:#6f6a62;
+    --accent:#3f6b57; --accent-soft:#e6efe9; --accent-ink:#2f5744;
+    --warn:#a8700f; --stop:#b23b30; --track:#eceae5;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#171614; --panel:#201f1c; --line:#332f2a; --ink:#efece6; --muted:#a09a90;
+      --accent:#74b096; --accent-soft:#22302a; --accent-ink:#8ec5ac;
+      --warn:#d9a13d; --stop:#e2695c; --track:#2b2924;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#171614; --panel:#201f1c; --line:#332f2a; --ink:#efece6; --muted:#a09a90;
+    --accent:#74b096; --accent-soft:#22302a; --accent-ink:#8ec5ac;
+    --warn:#d9a13d; --stop:#e2695c; --track:#2b2924;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:17px/1.7 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang HK","Noto Sans HK","Microsoft JhengHei",sans-serif;}
+  .wrap{max-width:820px;margin:0 auto;padding:28px 20px 120px}
+
+  /* ── 進度 ── */
+  .bar{display:flex;gap:5px;margin-bottom:26px}
+  .seg{flex:1;height:5px;border-radius:3px;background:var(--track);transition:.25s}
+  .seg.done{background:var(--accent)}
+  .seg.now{background:var(--accent);opacity:.55}
+  .stepno{font-size:13px;color:var(--muted);margin-bottom:6px;
+    font-variant-numeric:tabular-nums}
+
+  h1{font-size:clamp(25px,4.6vw,34px);line-height:1.3;margin:0 0 8px;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:15.5px;margin:0 0 22px;max-width:56ch}
+
+  /* ── 選項按鈕：大、易撳、狀態一眼睇得出 ── */
+  .opts{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(248px,1fr))}
+  .opt{display:flex;gap:13px;align-items:flex-start;text-align:left;
+    background:var(--panel);border:1.5px solid var(--line);border-radius:11px;
+    padding:15px 16px;cursor:pointer;transition:.14s;font:inherit;color:inherit;width:100%}
+  .opt:hover{border-color:var(--accent)}
+  .opt:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  .opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+  .opt[disabled]{cursor:default;opacity:.85}
+  .tick{width:23px;height:23px;border-radius:50%;border:1.5px solid var(--line);
+    flex:0 0 auto;margin-top:2px;display:grid;place-items:center;
+    font-size:13px;color:transparent;background:var(--bg);transition:.14s}
+  .opt[aria-pressed="true"] .tick{background:var(--accent);border-color:var(--accent);
+    color:#fff}
+  .otxt{min-width:0}
+  .olab{font-weight:600;font-size:16px;line-height:1.4}
+  .ohint{font-size:13.5px;color:var(--muted);line-height:1.55;margin-top:3px}
+  .owhy{font-size:12px;color:var(--accent-ink);margin-top:5px;font-weight:500}
+
+  /* ── 即時推導面板 ── */
+  .live{background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    padding:17px 19px;margin-top:22px}
+  .live h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 11px;font-weight:600}
+  .live + .live{margin-top:11px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font-size:13px;border:1px solid var(--line);border-radius:20px;
+    padding:3px 11px;background:var(--bg)}
+  .chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+  .rl{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+  .rl li{font-size:14px;line-height:1.6;padding-left:17px;position:relative;color:var(--muted)}
+  .rl li::before{content:"";position:absolute;left:0;top:10px;width:8px;height:2px;
+    background:var(--stop);border-radius:2px}
+  .say{background:var(--accent-soft);border-radius:9px;padding:14px 16px;
+    font-size:15px;line-height:1.72;margin-top:14px}
+  .say b{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--accent-ink);margin-bottom:5px}
+
+  /* ── 圖片分析 ── */
+  .drop{border:2px dashed var(--line);border-radius:13px;padding:34px 22px;
+    text-align:center;background:var(--panel);cursor:pointer;transition:.15s}
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+  .drop .big{font-size:19px;font-weight:600;margin-bottom:5px}
+  .drop .sm{font-size:14px;color:var(--muted)}
+  .swatches{display:flex;flex-wrap:wrap;gap:9px;margin-top:16px}
+  .sw{border:1px solid var(--line);border-radius:9px;overflow:hidden;
+    background:var(--panel);width:96px}
+  .sw .col{height:52px}
+  .sw .meta{padding:6px 8px;font-size:11px;line-height:1.4;color:var(--muted);
+    font-family:ui-monospace,Menlo,monospace}
+  .facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
+    gap:9px;margin-top:14px}
+  .fact{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+  .fact b{display:block;font-size:20px;font-weight:600;line-height:1.25}
+  .fact span{font-size:12px;color:var(--muted)}
+  .field{margin-top:16px}
+  .field label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
+  input[type=text]{width:100%;font:inherit;font-size:16px;padding:11px 13px;
+    border:1.5px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink)}
+  input[type=text]:focus{outline:none;border-color:var(--accent)}
+
+  /* ── 底部固定操作列 ── */
+  .foot{position:fixed;left:0;right:0;bottom:0;background:var(--panel);
+    border-top:1px solid var(--line);padding:13px 20px;
+    display:flex;gap:11px;align-items:center;justify-content:space-between}
+  .foot .inner{max-width:820px;margin:0 auto;width:100%;display:flex;gap:11px;align-items:center}
+  .btn{font:inherit;font-size:16px;font-weight:600;border-radius:10px;padding:13px 26px;
+    border:1.5px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;
+    transition:.14s}
+  .btn:hover{border-color:var(--accent)}
+  .btn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  .btn.go{background:var(--accent);border-color:var(--accent);color:#fff;margin-left:auto}
+  .btn.go:hover{filter:brightness(1.08)}
+  .btn[disabled]{opacity:.4;cursor:not-allowed}
+  .btn.ghost{border-color:transparent;color:var(--muted);padding-left:8px;padding-right:8px}
+  .note{font-size:13.5px;color:var(--warn);flex:1}
+
+  .done-card{background:var(--panel);border:1px solid var(--line);border-radius:13px;
+    padding:28px;text-align:center}
+  .done-card .big{font-size:26px;font-weight:700;margin-bottom:8px}
+  .todo{text-align:left;background:var(--accent-soft);border-radius:9px;
+    padding:15px 17px;margin-top:18px;font-size:14.5px;line-height:1.7}
+  code{font-family:ui-monospace,Menlo,monospace;font-size:13px;
+    background:var(--track);padding:2px 6px;border-radius:5px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar" id="bar"></div>
+  <div class="stepno" id="stepno"></div>
+  <h1 id="title">載入緊…</h1>
+  <p class="sub" id="sub"></p>
+  <div id="body"></div>
+</div>
+
+<div class="foot"><div class="inner">
+  <button class="btn ghost" id="back" type="button">← 返上一步</button>
+  <span class="note" id="note"></span>
+  <button class="btn go" id="next" type="button">下一步 →</button>
+</div></div>
+
+<script>
+const STEPS = ["industry","confirm","platforms","jobs","visual","review"];
+let draft = {}, cur = 0, opt = null, busy = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+async function post(url, data){
+  const r = await fetch(url, {method:"POST", headers:{"Content-Type":"application/json"},
+                             body: JSON.stringify(data)});
+  return r.json();
+}
+
+async function load(){
+  const r = await post("/api/wizard/options", {step: STEPS[cur], draft});
+  if (r.draft) draft = r.draft;
+  opt = r.options;
+  render();
+}
+
+function render(){
+  $("bar").innerHTML = STEPS.map((_,i) =>
+    `<div class="seg ${i<cur?"done":i===cur?"now":""}"></div>`).join("");
+  $("stepno").textContent = `第 ${cur+1} 步，共 ${STEPS.length} 步`;
+  $("title").textContent = opt.title;
+  $("sub").textContent = opt.sub || "";
+  $("note").textContent = opt.note || "";
+  $("back").style.visibility = cur === 0 ? "hidden" : "visible";
+  $("next").disabled = !opt.can_advance;
+  $("next").textContent = cur === STEPS.length-1 ? "建立工作台 ✓" : "下一步 →";
+
+  if (opt.step === "visual"){ renderVisual(); return; }
+  if (opt.step === "review"){ renderReview(); return; }
+
+  let html = `<div class="opts">` + opt.choices.map(c => `
+    <button class="opt" type="button" data-id="${esc(c.id)}"
+            aria-pressed="${c.selected}" ${c.locked ? "disabled" : ""}>
+      <span class="tick">✓</span>
+      <span class="otxt">
+        <span class="olab">${esc(c.label)}</span>
+        <span class="ohint">${esc(c.hint)}</span>
+        ${c.why ? `<span class="owhy">${esc(c.why)}</span>` : ""}
+      </span>
+    </button>`).join("") + `</div>`;
+
+  const dv = opt.derived;
+  if (dv && dv.label){
+    if (opt.step === "confirm" && dv.pain){
+      html += `<div class="say"><b>你而家嘅情況</b>${esc(dv.pain)}</div>
+               <div class="say"><b>工作台拆開咗咩</b>${esc(dv.unlock)}</div>`;
+    }
+    html += livePanels(dv);
+  }
+  $("body").innerHTML = html;
+
+  document.querySelectorAll(".opt").forEach(b => b.addEventListener("click", () => {
+    const id = b.dataset.id, key = fieldFor(opt.step);
+    if (opt.multi){
+      const s = new Set(draft[key] || []);
+      s.has(id) ? s.delete(id) : s.add(id);
+      draft[key] = [...s];
+    } else {
+      draft[key] = id;
+      if (opt.step === "industry"){ draft.platforms = []; draft.skills = []; }
+    }
+    load();
+  }));
+}
+
+function fieldFor(step){
+  return {industry:"archetype", confirm:"modifiers",
+          platforms:"platforms", jobs:"skills"}[step];
+}
+
+function livePanels(dv){
+  let h = "";
+  if (dv.agents?.length){
+    h += `<div class="live"><h2>你會請到 ${dv.agents.length} 個崗位</h2><div class="chips">` +
+      dv.agents.map(a => `<span class="chip on">${esc(a.label)}<span style="opacity:.7"> · ${esc(a.hint)}</span></span>`).join("") +
+      `</div></div>`;
+  }
+  if (dv.redlines?.length){
+    h += `<div class="live"><h2>會攔住嘅 ${dv.redlines.length} 條紅線</h2><ul class="rl">` +
+      dv.redlines.map(r => `<li>${esc(r)}</li>`).join("") + `</ul></div>`;
+  }
+  return h;
+}
+
+/* ── 圖片分析：全部喺呢個瀏覽器度做，原圖唔會送去任何地方 ── */
+function renderVisual(){
+  const v = draft.visual || {};
+  $("body").innerHTML = `
+    <div class="drop" id="drop" tabindex="0" role="button">
+      <div class="big">掉幾張你出過嘅圖入嚟</div>
+      <div class="sm">或者撳一下揀相 · 建議 10 張以上 · JPG／PNG／WebP</div>
+    </div>
+    <input type="file" id="file" accept="image/*" multiple hidden>
+    <div id="result"></div>
+    <div class="field">
+      <label for="handle">你嘅帳號（唔填都得）</label>
+      <input type="text" id="handle" placeholder="mamis_sunshine"
+             value="${esc((draft.handles||[]).join(", "))}">
+    </div>
+    <div class="field">
+      <label for="brand">品牌名（唔填就用帳號）</label>
+      <input type="text" id="brand" placeholder="例如：Mami's Sunshine"
+             value="${esc(draft.brand_name||"")}">
+    </div>
+    <p class="sub" style="margin-top:16px">${esc(opt.note)}</p>`;
+
+  const drop = $("drop"), file = $("file");
+  drop.onclick = () => file.click();
+  drop.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file.click(); } };
+  drop.ondragover = e => { e.preventDefault(); drop.classList.add("over"); };
+  drop.ondragleave = () => drop.classList.remove("over");
+  drop.ondrop = e => { e.preventDefault(); drop.classList.remove("over"); analyse(e.dataTransfer.files); };
+  file.onchange = () => analyse(file.files);
+  $("handle").oninput = e => draft.handles = e.target.value.split(/[,，\s]+/)
+    .map(s => s.replace(/^@/,"").trim()).filter(Boolean).slice(0,10);
+  $("brand").oninput = e => draft.brand_name = e.target.value.trim();
+  if (v.n) showVisual(v);
+}
+
+function showVisual(v){
+  $("result").innerHTML = `
+    <div class="swatches">` + (v.palette||[]).map(p => `
+      <div class="sw"><div class="col" style="background:${esc(p.hex)}"></div>
+      <div class="meta">${esc(p.hex)}<br>${Math.round(p.share*100)}%</div></div>`).join("") + `
+    </div>
+    <div class="facts">
+      <div class="fact"><b>${v.n}</b><span>張圖已分析</span></div>
+      <div class="fact"><b>${Math.round(v.light*100)}</b><span>亮度（0–100）</span></div>
+      <div class="fact"><b>${Math.round(v.sat*100)}</b><span>色彩濃度</span></div>
+      <div class="fact"><b>${Math.round(v.portrait*100)}%</b><span>直度圖</span></div>
+    </div>`;
+}
+
+async function analyse(files){
+  const imgs = [...files].filter(f => f.type.startsWith("image/")).slice(0, 60);
+  if (!imgs.length) return;
+  $("result").innerHTML = `<p class="sub" style="margin-top:16px">分析緊 ${imgs.length} 張…</p>`;
+
+  const cv = document.createElement("canvas");
+  cv.width = cv.height = 72;
+  const ctx = cv.getContext("2d", {willReadFrequently:true});
+  const counts = new Map();
+  let light=0, sat=0, portrait=0, edge=0, ok=0;
+
+  for (const f of imgs){
+    let bmp;
+    try { bmp = await createImageBitmap(f); }
+    catch { continue; }                       // HEIC 等瀏覽器解唔到嘅，靜靜跳過
+    if (bmp.height > bmp.width) portrait++;
+    ctx.clearRect(0,0,72,72);
+    ctx.drawImage(bmp, 0, 0, 72, 72);
+    bmp.close?.();
+    const px = ctx.getImageData(0,0,72,72).data;
+
+    const grey = new Float32Array(72*72);
+    for (let i=0, p=0; i<px.length; i+=4, p++){
+      const r=px[i], g=px[i+1], b=px[i+2];
+      const mx=Math.max(r,g,b), mn=Math.min(r,g,b);
+      light += mx/255; sat += mx ? (mx-mn)/mx : 0;
+      grey[p] = (r*0.299 + g*0.587 + b*0.114)/255;
+      // 量化到每通道 24 級，先合併肉眼分唔開嘅色
+      const q = (Math.round(r/11)*11 << 16) | (Math.round(g/11)*11 << 8) | Math.round(b/11)*11;
+      counts.set(q, (counts.get(q)||0) + 1);
+    }
+    // 邊緣密度：粗略估「圖入面有幾多字同細節」
+    let e = 0;
+    for (let y=1; y<71; y++) for (let x=1; x<71; x++){
+      const i = y*72+x;
+      if (Math.abs(grey[i]-grey[i+1]) + Math.abs(grey[i]-grey[i+72]) > 0.22) e++;
+    }
+    edge += e / (70*70);
+    ok++;
+  }
+
+  if (!ok){ $("result").innerHTML = `<p class="sub" style="margin-top:16px">
+      呢啲檔案個瀏覽器讀唔到（可能係 HEIC）。試下轉做 JPG。</p>`; return; }
+
+  const total = ok*72*72;
+  // 由多到少，但要隔開 —— 唔隔開會攞返 6 隻分唔開嘅米白色
+  const sorted = [...counts.entries()].sort((a,b) => b[1]-a[1]);
+  const palette = [];
+  for (const [q, c] of sorted){
+    const r=(q>>16)&255, g=(q>>8)&255, b=q&255;
+    if (palette.some(p => Math.abs(p.r-r)+Math.abs(p.g-g)+Math.abs(p.b-b) < 90)) continue;
+    palette.push({r, g, b, share: c/total,
+      hex: "#" + [r,g,b].map(x => x.toString(16).padStart(2,"0")).join("").toUpperCase()});
+    if (palette.length === 6) break;
+  }
+
+  draft.visual = {
+    n: ok,
+    palette: palette.map(p => ({hex:p.hex, share:p.share})),
+    light: light/total, sat: sat/total,
+    portrait: portrait/ok, edge: edge/ok,
+  };
+  showVisual(draft.visual);
+}
+
+function renderReview(){
+  const s = opt.summary, dv = opt.derived;
+  $("body").innerHTML = `
+    <div class="live"><h2>品牌</h2>
+      <div style="font-size:19px;font-weight:600">${esc(s.brand)}</div>
+      <div class="chips" style="margin-top:9px">
+        <span class="chip on">${esc(s.archetype)}</span>
+        ${dv.modifiers.map(m => `<span class="chip on">${esc(m.label)}</span>`).join("")}
+      </div></div>
+    <div class="live"><h2>喺 ${s.platforms.length} 個平台出</h2>
+      <div class="chips">${s.platforms.map(p => `<span class="chip">${esc(p)}</span>`).join("")}</div></div>
+    <div class="live"><h2>幫你做 ${s.skills.length} 樣嘢</h2>
+      <div class="chips">${s.skills.map(k => `<span class="chip">${esc(k)}</span>`).join("")}</div></div>
+    ${livePanels(dv)}
+    ${s.palette?.length ? `<div class="live"><h2>你嘅顏色</h2><div class="swatches">` +
+      s.palette.map(p => `<div class="sw"><div class="col" style="background:${esc(p.hex)}"></div>
+        <div class="meta">${esc(p.hex)}</div></div>`).join("") + `</div></div>` : ""}`;
+}
+
+async function create(){
+  if (busy) return;
+  busy = true;
+  $("next").disabled = true; $("next").textContent = "建立緊…";
+  const r = await post("/api/wizard/create", {draft});
+  busy = false;
+  if (r.error){
+    $("note").textContent = r.error;
+    $("next").disabled = false; $("next").textContent = "再試一次";
+    return;
+  }
+  $("bar").innerHTML = STEPS.map(() => `<div class="seg done"></div>`).join("");
+  $("stepno").textContent = "完成";
+  $("title").textContent = "開好咗";
+  $("sub").textContent = "";
+  $("body").innerHTML = `
+    <div class="done-card">
+      <div class="big">${esc(r.slug)}</div>
+      <p style="color:var(--muted);margin:0">
+        ${r.agents} 個崗位 · ${r.redlines} 條紅線${r.visual ? " · 顏色已寫入" : ""}</p>
+      <p style="margin-top:10px"><code>${esc(r.path)}</code></p>
+      <div class="todo">
+        <b>仲差呢兩樣，係機器補唔到嘅：</b>
+        <ul style="margin:8px 0 0;padding-left:20px">
+          ${r.still_needed.map(x => `<li>${esc(x)}</li>`).join("")}
+        </ul>
+        <p style="margin:10px 0 0;color:var(--muted);font-size:13.5px">
+          未有呢兩樣，工作台照行得，但出嚟嘅嘢只會啱格式，唔會啱品牌 ——
+          而且一落數字就會被攔住。</p>
+      </div>
+    </div>`;
+  $("back").style.visibility = "hidden";
+  $("note").textContent = "";
+  $("next").disabled = false;
+  $("next").textContent = "睇工作台 →";
+  $("next").onclick = () => location.href = "/";
+}
+
+$("next").onclick = () => {
+  if (cur === STEPS.length-1) return create();
+  cur++; load();
+};
+$("back").onclick = () => { if (cur > 0){ cur--; load(); } };
+
+post("/api/wizard/start", {sentence: new URLSearchParams(location.search).get("s") || ""})
+  .then(r => { draft = r.draft || {}; load(); });
+</script>
+</body>
+</html>
